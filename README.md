@@ -6,8 +6,6 @@
 by jaggz.h {who is at} gmail.com
 2025-04-09
 
-## Warning: Do not use with `<redirections`. See WHY NOT REDIRECTS
-
 ## Why?
 
 Sometimes you want to peek at stdin to see if there's any data — **without** slurping it up and leaving nothing for the next command.
@@ -33,8 +31,8 @@ Also — thanks to some ChatGPT-powered wizardry — there's an ultra-tiny versi
 (There's a dynamically linked version too if you prefer that.)
 
 ## Issues
-    - NONE [that I know of]
-    - Except I didn't make an installer. (I just build and symlink its binaries to my ~/bin.)
+    - Do not use with `<redirections`. See section: WHY NOT REDIRECTS
+    - I didn't make an installer. (I just build and symlink its binaries to my ~/bin)
 
 ## Usage
 
