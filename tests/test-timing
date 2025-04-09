@@ -1,16 +1,20 @@
 #!/bin/bash
 # set -euo pipefail
 
-loopcnt=10000
-
-# optimized version (asm, static.. no libc, no main(), etc.) :)
-bin_opt=../iny
+loopcnt=5000
 
 # normal version
-bin_norm=../iny-not-overoptimized
+bin_norm=./iny
+# optimized version (asm, static.. no libc, no main(), etc.) :)
+bin_opt=./iny-raw
 
-echo "Benchmarking 'iny' and 'iny-not-overoptimized' with $loopcnt runs each..."
+echo "Benchmarking '$bin_opt' and '$bin_norm' with $loopcnt runs each..."
 echo
+
+if [[ ! -f "$bin_norm" || ! -x "$bin_norm" ]]; then
+	echo "Couldn't find $bin_norm. Run me (tests/test-timing) from main dir" >&2
+	exit
+fi
 
 time_run() {
     local cmd=$1
@@ -32,6 +36,6 @@ time_run() {
     echo
 }
 
-time_run "$bin_opt" "iny (no-libc, static)"
-time_run "$bin_norm" "iny-not-overoptimized (libc)"
+time_run "$bin_opt" "$bin_opt (no-libc, static)"
+time_run "$bin_norm" "$bin_norm (libc)"
 

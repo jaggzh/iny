@@ -1,18 +1,19 @@
 all: build
 
-build: iny iny-not-overoptimized
+build: iny iny-raw
+
+iny-raw: iny-raw.c
+	gcc -nostdlib -static -o iny-raw iny-raw.c -lc
 
 iny: iny.c
-	gcc -nostdlib -static -o iny iny.c -lc
-
-iny-not-overoptimized: iny-not-overoptimized.c
-	gcc -o iny-not-overoptimized.c iny-not-overoptimized.c.c
+	gcc -o iny iny.c
 
 vi:
 	vim \
 		Makefile \
 		iny.c \
-		iny-not-overoptimized.c \
+		iny-raw.c \
+		tests/test-timing \
 		README.md \
 
 # Leave blank line above

@@ -1,27 +1,65 @@
-// inpavail_raw.c
-#include <stdint.h>
+#include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <ctype.h>
+#include <fcntl.h>
 
-#define SYS_poll 7
+void usage(const char *progname) {
+	fprintf(stderr,
+		"Usage: %s [-t SECONDS] [-f FD]\n"
+		"  -t, --timeout-s SECONDS   Timeout in seconds (can be fractional). Default: 0 (non-blocking)\n"
+		"  -f, --fd FD               File descriptor to check. Default: 0 (stdin)\n"
+		"  -h, --help                Show this help message\n",
+		progname
+	);
+}
 
-struct pollfd {
-    int fd;
-    short events;
-    short revents;
-};
+int is_valid_float(const char *s) {
+	char *endptr;
+	strtod(s, &endptr);
+	return (s[0] != '\0' && *endptr == '\0');
+}
 
-long syscall(long n, ...);
+int is_fd_valid(int fd) {
+	return fcntl(fd, F_GETFL) != -1 || errno != EBADF;
+}
 
-void _start(void) {
-    struct pollfd pfd = { .fd = 0, .events = 1 };
-    long ret = syscall(SYS_poll, &pfd, 1, 0);
+int main(int argc, char *argv[]) {
+	int   fd         = 0;
+	int   timeout_ms = 0;
 
-    long code = (ret > 0 && (pfd.revents & 1)) ? 0 : 1;
+	for (int i = 1; i < argc; ++i) {
+		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			usage(argv[0]);
+			return 0;
+		} else if ((!strcmp(argv[i], "-t") || !strcmp(argv[i], "--timeout-s")) && i + 1 < argc) {
+			if (!is_valid_float(argv[i + 1])) {
+				fprintf(stderr, "Invalid timeout value: %s\n", argv[i + 1]);
+				return 2;
+			}
+			timeout_ms = (int)(atof(argv[++i]) * 1000.0);
+		} else if ((!strcmp(argv[i], "-f") || !strcmp(argv[i], "--fd")) && i + 1 < argc) {
+			fd = atoi(argv[++i]);
+			if (!is_fd_valid(fd)) {
+				fprintf(stderr, "Invalid file descriptor: %d\n", fd);
+				return 2;
+			}
+		} else {
+			fprintf(stderr, "Unknown or incomplete argument: %s\n", argv[i]);
+			usage(argv[0]);
+			return 2;
+		}
+	}
 
-    // exit(code)
-    __asm__ volatile (
-        "mov $60, %%rax\n"  // syscall: exit
-        "mov %0, %%rdi\n"
-        "syscall\n"
-        : : "r"(code) : "%rax", "%rdi"
-    );
+	struct pollfd pfd = { .fd = fd, .events = POLLIN };
+
+	int ret = poll(&pfd, 1, timeout_ms);
+
+	if (ret > 0 && (pfd.revents & POLLIN))
+		return 0;
+	else
+		return 1;
 }
