@@ -1,0 +1,101 @@
+#!/bin/bash
+# set -euo pipefail  # Don't use. Causes early termination of test script.
+
+bin_norm=./iny
+bin_opt=./iny-raw  # (optimized, no-libc version)
+
+# Color codes
+a_ok=$'\033[32;1m'
+a_fail=$'\033[31;1m'
+a_unk=$'\033[33m'
+a_hi=$'\033[33;1m'
+a_rst=$'\033[0m'
+
+# Status flags
+flag_ok="[${a_ok}✅${a_rst}]"
+flag_fail="[${a_fail}❌${a_rst}]"
+flag_unk="[${a_unk}?${a_rst}]"
+
+echo "=== Basic Function Test ==="
+# Test: Pipe input should return exit 0 (data available)
+if echo "abc" | "$bin_norm"; then
+	echo "    ${flag_ok} Pipe input: exit 0 (data available)"
+else
+	echo "    ${flag_fail} Pipe input: expected exit 0 but got non-zero"
+fi
+echo
+
+echo "=== Redirected Input (Expected Failure) ==="
+# WARNING: Using redirection (e.g. < /dev/null) is not supported; this is an expected failure.
+result=$("$bin_norm" < /dev/null)
+r=$?
+echo "    DEBUG: Redirecting from /dev/null returns exit code: $r (it thinks data is available)"
+echo "    ${flag_unk} EXPECTED FAILURE: Input redirection (e.g. '< /dev/null') is not reliable; do not use it."
+echo
+
+echo "=== Timeout Test ==="
+# Create a FIFO that remains open with no data to trigger timeout.
+tmpfifo=$(mktemp -u)
+mkfifo "$tmpfifo"
+exec 3<>"$tmpfifo"
+start=$(date +%s.%N)
+"$bin_norm" -t 1 -f 3
+r_timeout=$?
+end=$(date +%s.%N)
+elapsed=$(echo "$end - $start" | bc)
+echo "    Elapsed time: $elapsed seconds, exit code: $r_timeout"
+if (( $(echo "$elapsed >= 1" | bc -l) )); then
+	echo "    ${flag_ok} Timeout test: waited at least 1 second"
+else
+	echo "    ${flag_fail} Timeout test: did not wait long enough"
+fi
+rm "$tmpfifo"
+echo
+
+echo "=== Invalid FD Test ==="
+# Test: FD -1 should fail
+if "$bin_norm" -f -1 >/dev/null 2>&1; then
+	echo "    ${flag_fail} Invalid FD test: expected failure on FD -1"
+else
+	echo "    ${flag_ok} Invalid FD test: correctly failed on invalid FD -1"
+fi
+echo
+
+echo "=== Invalid Timeout Test ==="
+# Test: Non-numeric timeout should fail
+if "$bin_norm" -t banana >/dev/null 2>&1; then
+	echo "    ${flag_fail} Invalid timeout test: expected failure with non-numeric timeout"
+else
+	echo "    ${flag_ok} Invalid timeout test: correctly failed with invalid timeout string"
+fi
+echo
+
+echo "=== End of Functional Tests ==="
+echo
+
+# === Timing Benchmark ===
+loopcnt=5000
+echo "=== Timing Benchmarks ==="
+echo "    Benchmarking '$bin_opt' and '$bin_norm' with $a_hi$loopcnt runs$a_rst each..."
+echo
+
+time_run() {
+	local cmd=$1
+	local label=$2
+
+	echo "    Running: $label"
+	local start end
+
+	start=$(date +%s.%N)
+	for ((i = 0; i < loopcnt; i++)); do
+		echo | "$cmd" > /dev/null
+	done
+	end=$(date +%s.%N)
+
+	duration=$(echo "$end - $start" | bc)
+	echo "    $label: $a_hi$duration seconds$a_rst"
+	echo
+}
+
+time_run "$bin_opt" "$bin_opt (no-libc, static)"
+time_run "$bin_norm" "$bin_norm (libc)"

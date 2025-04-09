@@ -6,6 +6,8 @@
 by jaggz.h {who is at} gmail.com
 2025-04-09
 
+## Warning: Do not use with `<redirections`. See WHY NOT REDIRECTS
+
 ## Why?
 
 Sometimes you want to peek at stdin to see if there's any data — **without** slurping it up and leaving nothing for the next command.
@@ -21,6 +23,7 @@ This is where `iny` comes in:
 - Does **not** consume input
 - Exits 0 if data is ready to read
 - Exits 1 if there's nothing (yet)
+- I'm including a stripped down static, non-libc, version, for use on embedded systems, some containers, etc. It currently does not offer options to test anything other than stdin (fd=0) and 0 timeout.
 
 Also — thanks to some ChatGPT-powered wizardry — there's an ultra-tiny version that:
     Requires no libc
@@ -53,4 +56,13 @@ Yup, you typed while we were sleeping.
 $ echo abcd | { if ./iny; then read -n1 letter && echo "We got at least a letter: $letter"; else echo "Nothing was available when we checked."; fi; }
 We got at least a letter: a
 ```
+
+## WHY NOT REDIRECTS:
+
+This tool is intended to be used with **pipes**. When input is redirected from a regular file (e.g., using `< /dev/null` or `< somefile`) or even certain FIFOs, the operating system typically treats the file as always "ready" (i.e., `POLLIN` is set), regardless of whether any actual data is available. **Do not rely on `iny` to indicate data availability when using such redirections.**  With -v verbose you will be able to see for yourself what the returned POLLIN and POLLHUP flags are (and that they are not reliable for redirects).
+
+---
+
+That should inform users clearly about the limitations and prevent potential misuse.
+
 

@@ -1,6 +1,9 @@
-all: build
+all: build tests
 
 build: iny iny-raw
+
+tests: build
+	tests/test-functional
 
 iny-raw: iny-raw.c
 	gcc -nostdlib -static -o iny-raw iny-raw.c -lc
@@ -13,6 +16,7 @@ vi:
 		Makefile \
 		iny.c \
 		iny-raw.c \
+		tests/test-functional \
 		tests/test-timing \
 		README.md \
 

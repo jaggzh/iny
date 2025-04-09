@@ -12,6 +12,7 @@ void usage(const char *progname) {
 		"Usage: %s [-t SECONDS] [-f FD]\n"
 		"  -t, --timeout-s SECONDS   Timeout in seconds (can be fractional). Default: 0 (non-blocking)\n"
 		"  -f, --fd FD               File descriptor to check. Default: 0 (stdin)\n"
+		"  -v                        Increment verbosity\n",
 		"  -h, --help                Show this help message\n",
 		progname
 	);
@@ -28,13 +29,16 @@ int is_fd_valid(int fd) {
 }
 
 int main(int argc, char *argv[]) {
-	int   fd         = 0;
-	int   timeout_ms = 0;
+	int fd         = 0;
+	int timeout_ms = 0;
+	int verbose    = 0;
 
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			usage(argv[0]);
 			return 0;
+		} else if (!strcmp(argv[i], "-v")) {
+			verbose++;
 		} else if ((!strcmp(argv[i], "-t") || !strcmp(argv[i], "--timeout-s")) && i + 1 < argc) {
 			if (!is_valid_float(argv[i + 1])) {
 				fprintf(stderr, "Invalid timeout value: %s\n", argv[i + 1]);
@@ -58,8 +62,14 @@ int main(int argc, char *argv[]) {
 
 	int ret = poll(&pfd, 1, timeout_ms);
 
-	if (ret > 0 && (pfd.revents & POLLIN))
-		return 0;
-	else
+	if (verbose) {
+		fprintf(stderr, "POLLIN: %d\n", pfd.revents & POLLIN);
+		fprintf(stderr, "POLLHUP (unused): %d\n", pfd.revents & POLLHUP);
+	}
+	if (ret > 0) {
+		if (pfd.revents & POLLIN) return 0;
+		else return 1;
+	} else {
 		return 1;
+	}
 }
