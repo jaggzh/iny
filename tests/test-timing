@@ -1,0 +1,37 @@
+#!/bin/bash
+# set -euo pipefail
+
+loopcnt=10000
+
+# optimized version (asm, static.. no libc, no main(), etc.) :)
+bin_opt=../iny
+
+# normal version
+bin_norm=../iny-not-overoptimized
+
+echo "Benchmarking 'iny' and 'iny-not-overoptimized' with $loopcnt runs each..."
+echo
+
+time_run() {
+    local cmd=$1
+    local label=$2
+
+    echo "Running: $label"
+    local start end
+
+    start=$(date +%s.%N)
+
+    for ((i = 0; i < loopcnt; i++)); do
+        echo | "$cmd" # > /dev/null
+    done
+
+    end=$(date +%s.%N)
+
+    duration=$(echo "$end - $start" | bc)
+    echo "$label: $duration seconds"
+    echo
+}
+
+time_run "$bin_opt" "iny (no-libc, static)"
+time_run "$bin_norm" "iny-not-overoptimized (libc)"
+
